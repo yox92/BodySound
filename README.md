@@ -27,6 +27,9 @@ The goal is to enhance audio immersion by reducing certain movement-related audi
 3. Launch the game.
 
 ---
+## 📚 Log IF ONLY NEED 📚
+-  **debug.cfg** - **body_log.txt**  ==> ``BepInEx\plugins\BodySound`` true = debug mod on
+---
 
 ## 🔍 How it works
 
