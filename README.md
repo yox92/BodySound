@@ -1,4 +1,4 @@
-# 🦶 BodySound — Footstep & Gear Volume Tweaker for SPT
+# 🦶 BodySound — Body Volume Tweaker for SPT
 
 ## 🎯 Description
 
