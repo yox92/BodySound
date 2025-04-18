@@ -1,4 +1,4 @@
-# 🦶 BodySound — Footstep & Gear Volume Tweaker for SPT-AKI
+# 🦶 BodySound — Footstep & Gear Volume Tweaker for SPT
 
 ## 🎯 Description
 
