@@ -1,8 +1,8 @@
-# 🦶 BodySound — Body Volume Tweaker for SPT
+# 🦶 BodySound — Footstep & Gear Volume Tweaker for SPT-AKI
 
 ## 🎯 Description
 
-**BodySound** is a client-side mod for SPT that allows you to **control the volume of local body-related sounds** (footsteps, gear movement, jumping, etc.).
+**BodySound** is a client-side mod for SPT that allows you to **control the volume of local body-related sounds** (footsteps, gear movement, jumping, etc.) and disable looting / bag interaction
 
 The goal is to enhance audio immersion by reducing certain movement-related audio categories for the local player.
 

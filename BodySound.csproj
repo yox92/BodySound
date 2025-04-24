@@ -42,6 +42,10 @@
             <HintPath>..\..\BepInEx\core\0Harmony.dll</HintPath>
         </Reference>
     </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="Decompile\**\*.cs" />
+    </ItemGroup>
     
     <Target Name="PostBuild" AfterTargets="Build">
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"

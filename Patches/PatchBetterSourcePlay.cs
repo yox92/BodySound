@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using BodySound.Utils;
 using EFT;
 using HarmonyLib;
@@ -6,8 +7,14 @@ using UnityEngine;
 
 namespace BodySound.Patches;
 
-public class PatchBodySoundVolume
+public abstract class PatchBodySoundVolume
 {
+    public static GameWorld CachedGameWorld;
+
+    /// <summary>
+    /// Harmony patch class for the BetterSource.Play method.
+    /// This modifies the behavior to adjust body sound volumes.
+    /// </summary>
     [HarmonyPatch(typeof(BetterSource), nameof(BetterSource.Play),
         new[]
         {
@@ -16,64 +23,84 @@ public class PatchBodySoundVolume
         })]
     public static class PatchBetterSourcePlay
     {
+        /// <summary>
+        /// Harmony prefix method that intercepts calls to BetterSource.Play.
+        /// Adjusts the volume of body sounds before execution of the original method.
+        /// </summary>
+        /// <param name="__instance">The instance of BetterSource being called.</param>
+        /// <param name="clip1">The primary audio clip.</param>
+        /// <param name="clip2">The secondary audio clip.</param>
+        /// <param name="balance">The balance of audio playback.</param>
+        /// <param name="volume">The volume of playback (modifiable).</param>
+        /// <param name="forceStereo">Flag to enforce stereo playback.</param>
+        /// <param name="oneShot">Flag to indicate whether playback is one-shot.</param>
         [HarmonyPrefix]
         public static void Prefix(
             BetterSource __instance,
             AudioClip clip1,
             AudioClip clip2,
             float balance,
-            float volume,
+            ref float volume,
             bool forceStereo,
             bool oneShot)
         {
             try
             {
-                if (!IsBodyAudio(clip1?.name ?? string.Empty) && !IsBodyAudio(clip2?.name ?? string.Empty)) return;
-
-                var player = __instance?.transform?.root?.GetComponent<Player>();
-                if (player == null) return;
-                var isLocal = player != null && player == GamePlayerOwner.MyPlayer;
-                if (!isLocal) return;
-
-                // 🎧 Récupération des noms
-                var clipName1 = clip1?.name;
-                var clipName2 = clip2?.name;
-
-                if (clip1 != null)
-                    BodyLogger.Log($"[BetterSource.Play] 🎧 Clip1 joué : {clipName1}");
-                if (clip2 != null && clip2 != clip1)
-                    BodyLogger.Log($"[BetterSource.Play] 🎧 Clip2 joué : {clipName2}");
-
-                var volume1 = clipName1 != null ? GetVolumeFromConfig(clipName1) : 1f;
-                var volume2 = clipName2 != null ? GetVolumeFromConfig(clipName2) : 1f;
-
-                var finalVolume = Math.Min(volume1, volume2);
-                __instance.SetBaseVolume(finalVolume);
-                BodyLogger.Log(
-                    $"[BetterSource.Play] 🧲 Volume forcé: {finalVolume} pour {clipName1} / {clipName2}");
+                AdjustVolumeForBodySounds(__instance, clip1, clip2);
             }
             catch (Exception ex)
             {
-                BodyLogger.Error($"[BetterSource.Play] ❌ Exception dans Prefix : {ex}");
+                BodyLogger.Error($"[BetterSource.Play] ❌ Exception in Prefix: {ex}");
             }
         }
     }
 
-    private static bool IsBodyAudio(string name) =>
-        name.StartsWith("walk_") || name.StartsWith("gear_") || name.StartsWith("stop_") ||
-        name.StartsWith("jump_") || name.StartsWith("landing_") || name.StartsWith("turn_") ||
-        name.StartsWith("sprint_");
+    /// <summary>
+    /// Adjusts the volume of body sounds if detected.
+    /// Ensures specific criteria are met before applying volume adjustments.
+    /// </summary>
+    /// <param name="audioSource">The BetterSource instance used for playing audio.</param>
+    /// <param name="primaryClip">The primary audio clip being played.</param>
+    /// <param name="secondaryClip">The secondary audio clip being played.</param>
+    private static void AdjustVolumeForBodySounds(
+        BetterSource audioSource,
+        AudioClip primaryClip,
+        AudioClip secondaryClip)
+    {
+        var logs = new List<string>();
 
-// 🔧 Volume selon config
-    private static float GetVolumeFromConfig(string name) =>
-        (name switch
+        var primaryClipName = primaryClip?.name ?? "";
+        var secondaryClipName = secondaryClip?.name ?? "";
+
+        logs.Add($"🎵 Primary: {primaryClipName}, Secondary: {secondaryClipName}");
+
+        var player = AudioUtils.GetPlayer(audioSource, logs);
+        var isLocalPlayer = player != null && player == GamePlayerOwner.MyPlayer;
+
+        if (!isLocalPlayer)
         {
-            _ when name.StartsWith("walk_") => Plugin.WalkVolume.Value,
-            _ when name.StartsWith("turn_") => Plugin.TurnVolume.Value,
-            _ when name.StartsWith("gear_") => Plugin.GearVolume.Value,
-            _ when name.StartsWith("stop_") => Plugin.StopVolume.Value,
-            _ when name.StartsWith("sprint_") => Plugin.SprintVolume.Value,
-            _ when name.StartsWith("jump_") || name.StartsWith("landing_") => Plugin.JumpVolume.Value,
-            _ => 100
-        }) / 100f;
+            logs.Add("❌ not from a local player, no adjustment.");
+            BodyLogger.Block(logs);
+            return;
+        }
+
+        logs.Add($"🔍 Player detected: {player}");
+
+        if (!AudioUtils.IsBodyAudio(primaryClipName) && !AudioUtils.IsBodyAudio(secondaryClipName))
+        {
+            logs.Add("❌ Not a recognized sound, no adjustment.");
+            BodyLogger.Block(logs);
+            return;
+        }
+
+        var vol1 = AudioUtils.GetVolumeFromName(primaryClipName);
+        var vol2 = AudioUtils.GetVolumeFromName(secondaryClipName);
+        var finalVolume = Math.Min(vol1, vol2);
+
+        logs.Add($"🔈 Calculated volume: Primary = {vol1}, Secondary = {vol2}, Final = {finalVolume}");
+
+        audioSource.SetBaseVolume(finalVolume);
+        logs.Add($"✅ Volume applied via SetBaseVolume for Body sound.");
+        BodyLogger.Block(logs);
+    }
 }
