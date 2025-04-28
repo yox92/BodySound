@@ -46,7 +46,7 @@ public abstract class PatchBodySoundVolume
         {
             try
             {
-                AdjustVolumeForBodySounds(__instance, clip1, clip2);
+                AdjustVolume(__instance, clip1, clip2);
             }
             catch (Exception ex)
             {
@@ -62,18 +62,49 @@ public abstract class PatchBodySoundVolume
     /// <param name="audioSource">The BetterSource instance used for playing audio.</param>
     /// <param name="primaryClip">The primary audio clip being played.</param>
     /// <param name="secondaryClip">The secondary audio clip being played.</param>
-    private static void AdjustVolumeForBodySounds(
+    private static void AdjustVolume(
         BetterSource audioSource,
         AudioClip primaryClip,
         AudioClip secondaryClip)
     {
         var logs = new List<string>();
+        LogClipNames(primaryClip, secondaryClip);
 
         var primaryClipName = primaryClip?.name ?? "";
         var secondaryClipName = secondaryClip?.name ?? "";
 
         logs.Add($"🎵 Primary: {primaryClipName}, Secondary: {secondaryClipName}");
 
+        if (!ValidateLocalPlayer(audioSource, logs))
+        {
+            return;
+        }
+
+        if (!AudioUtils.IsRecognizedAudioType(primaryClipName, secondaryClipName))
+        {
+            logs.Add("❌ Not a recognized sound, no adjustment.");
+            BodyLogger.Block(logs);
+            return;
+        }
+
+        ApplyVolumeAdjustment(audioSource, primaryClipName, secondaryClipName, logs);
+    }
+
+    private static void LogClipNames(AudioClip primaryClip, AudioClip secondaryClip)
+    {
+        if (primaryClip != null)
+        {
+            BodyLogger.Info($"[BetterSource.Play] clip name : {primaryClip.name}");
+        }
+
+        if (secondaryClip != null)
+        {
+            BodyLogger.Info($"[BetterSource.Play] clip name : {secondaryClip.name}");
+        }
+    }
+
+    private static bool ValidateLocalPlayer(BetterSource audioSource, List<string> logs)
+    {
         var player = AudioUtils.GetPlayer(audioSource, logs);
         var isLocalPlayer = player != null && player == GamePlayerOwner.MyPlayer;
 
@@ -81,18 +112,16 @@ public abstract class PatchBodySoundVolume
         {
             logs.Add("❌ not from a local player, no adjustment.");
             BodyLogger.Block(logs);
-            return;
+            return false;
         }
 
         logs.Add($"🔍 Player detected: {player}");
+        return true;
+    }
 
-        if (!AudioUtils.IsBodyAudio(primaryClipName) && !AudioUtils.IsBodyAudio(secondaryClipName))
-        {
-            logs.Add("❌ Not a recognized sound, no adjustment.");
-            BodyLogger.Block(logs);
-            return;
-        }
-
+    private static void ApplyVolumeAdjustment(BetterSource audioSource, string primaryClipName,
+        string secondaryClipName, List<string> logs)
+    {
         var vol1 = AudioUtils.GetVolumeFromName(primaryClipName);
         var vol2 = AudioUtils.GetVolumeFromName(secondaryClipName);
         var finalVolume = Math.Min(vol1, vol2);
