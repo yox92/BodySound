@@ -10,7 +10,7 @@ using UnityEngine;
 namespace BodySound
 {
    
-    [BepInPlugin("com.spt.BodySound", "BodySound", "1.0.2")]
+    [BepInPlugin("com.spt.BodySound", "BodySound", "1.0.3")]
     public class Plugin : BaseUnityPlugin
     {
         private static ManualLogSource _logSource;
