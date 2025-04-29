@@ -20,13 +20,12 @@ namespace BodySound.Utils
         private static EnumLoggerMode _mode = EnumLoggerMode.DirectWrite;
         private static readonly object WriteLock = new();
         private static readonly string LOGFilePath = PathsFile.LogFilePath;
-        private static readonly List<string> PackedLogs = new();
+        private static readonly List<string> PackedLogs = [];
         private static bool _autoFlushEnabled = false;
         private static readonly Dictionary<string, (string Block, int Count)> DeduplicationMap = new();
         private static bool _stopFlush = false;
         private static bool DebugOnly { get; set; } = false;
-
-
+        
         private static bool LoadDebugMode()
         {
             var configPath = PathsFile.DebugPath;
@@ -250,7 +249,18 @@ namespace BodySound.Utils
         {
             if (!DebugOnly) return;
             FlushPackedLogsToDisk();
-            FlushDeduplicatedLogsToDisk(); // 🔒 anti-perte
+            // 🔒
+            FlushDeduplicatedLogsToDisk();
+        }
+        
+        public static void AddLogSafe(ref List<string> logs, string message)
+        {
+            // 🔒
+            if (!DebugOnly)
+                return;
+
+            logs ??= [];
+            logs.Add(message);
         }
         
     }

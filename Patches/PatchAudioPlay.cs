@@ -3,7 +3,7 @@ using BodySound.Utils;
 using HarmonyLib;
 using UnityEngine;
 using Audio.ReverbSubsystem;
-using EFT;
+using BodySound.Boot;
 
 namespace BodySound.Patches
 {
@@ -21,12 +21,27 @@ namespace BodySound.Patches
         [HarmonyPrefix]
         public static bool Prefix_PlayOneShot(AudioSource __instance, AudioClip clip, float volumeScale)
         {
+            // 🔒
+            if (!CacheStatusSession.AllowHooks)
+                return true;
+            // 🔒
+            if (__instance == null)
+                return true;
+            // 🔒
             if (clip == null)
                 return true;
+            var logs = new List<string>();
+            // 🔒
+            if (clip != null)
+            {
+                BodyLogger.AddLogSafe(ref logs,$"[AudioSource.PlayOneShot] clip name : {clip.name}");
+            }
             
-            return AudioUtils.UiInterfaceSound(clip.name) && AudioUtils.InGameSound(clip.name, __instance);
+            var result = AudioUtils.UiInterfaceSound(clip.name, logs) && AudioUtils.InGameSound(clip.name, __instance, logs);
+            BodyLogger.Block(logs);
+            return result;
         }
-        
+
         [HarmonyPatch(typeof(ReverbSimpleSource), nameof(ReverbSimpleSource.Play))]
         public static class PatchReverbSimpleSourcePlay
         {
@@ -48,29 +63,50 @@ namespace BodySound.Patches
                 ref bool forceStereo,
                 ref bool oneShot)
             {
-                if (clip1 != null)
-                {
-                    BodyLogger.Info($"[ReverbSimpleSource.Play] clip name : {clip1.name}");
-                }
-
-                if (clip2 != null)
-                {
-                    BodyLogger.Info($"[ReverbSimpleSource.Play] clip name : {clip2.name}");
-                }
-
-                var clipName = clip1?.name ?? clip2?.name ?? "NULL";
-
-                if (!AudioUtils.IsLootingAudio(clipName)) return true;
-
-                var player = AudioUtils.FindNearestPlayer(__instance);
-
-                if (player == null || player != GamePlayerOwner.MyPlayer) 
+                // 🔒
+                if (!CacheStatusSession.AllowHooks)
                     return true;
-
-                if (Plugin.LootingVolume.Value) 
+                // 🔒
+                if (__instance == null) 
                     return true;
-                BodyLogger.Log($"[🔇 BLOCK] Playback cancelled for '{clipName}' via ReverbSimpleSource (Looting)");
-                return false;
+                // 🔒
+                if (clip1 == null && clip2 == null)
+                    return true;
+                var logs = new List<string>();
+                AudioUtils.LogClipInfo(clip1, clip2, logs);
+
+                var clipName = AudioUtils.DetermineClipName(clip1, clip2);
+                
+                if (AudioUtils.IsBreathOk(clipName))
+                {
+                    BodyLogger.AddLogSafe(ref logs,
+                        $"[🔇 BLOCK] Playback cancelled for '{clipName}' via ReverbSimpleSource (Breath OK)");
+                    BodyLogger.Block(logs);
+                    return false;
+                }
+                if (AudioUtils.Hurt(clipName))
+                {
+                    BodyLogger.AddLogSafe(ref logs,
+                        $"[🔇 BLOCK] Playback cancelled for '{clipName}' via ReverbSimpleSource (Hurt)");
+                    BodyLogger.Block(logs);
+                    return false;
+                }
+               
+                if (!AudioUtils.IsLootingAudio(clipName))
+                {
+                    BodyLogger.Block(logs);
+                    return true;
+                }
+               
+                if (!Plugin.LootingVolume.Value && AudioUtils.IsLocalPlayerLooting(__instance, clipName, logs))
+                {
+                    BodyLogger.AddLogSafe(ref logs,
+                        $"[🔇 BLOCK] Playback cancelled for '{clipName}' via ReverbSimpleSource (Looting)");
+                        BodyLogger.Block(logs);
+                    return false;
+                }
+                BodyLogger.Block(logs);
+                return true;
             }
         }
     }

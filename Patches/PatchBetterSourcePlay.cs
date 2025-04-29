@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using BodySound.Boot;
 using BodySound.Utils;
 using EFT;
 using HarmonyLib;
@@ -44,6 +45,9 @@ public abstract class PatchBodySoundVolume
             bool forceStereo,
             bool oneShot)
         {
+            if (!CacheStatusSession.AllowHooks)
+                return;
+               
             try
             {
                 AdjustVolume(__instance, clip1, clip2);
@@ -67,69 +71,73 @@ public abstract class PatchBodySoundVolume
         AudioClip primaryClip,
         AudioClip secondaryClip)
     {
+        // 🔒
+        if (audioSource == null)
+            return;
+        // 🔒
+        if (primaryClip == null && secondaryClip == null)
+            return;
+        
+        var primaryClipName = primaryClip?.name;
+        var secondaryClipName = secondaryClip?.name;
+        
         var logs = new List<string>();
-        LogClipNames(primaryClip, secondaryClip);
-
-        var primaryClipName = primaryClip?.name ?? "";
-        var secondaryClipName = secondaryClip?.name ?? "";
-
-        logs.Add($"🎵 Primary: {primaryClipName}, Secondary: {secondaryClipName}");
-
-        if (!ValidateLocalPlayer(audioSource, logs))
+        
+        // 🔒
+        if (string.IsNullOrEmpty(primaryClipName) && string.IsNullOrEmpty(secondaryClipName))
         {
+            BodyLogger.AddLogSafe(ref logs, "[BetterSource.Play]❌ Skipped AdjustVolume because both clips are null or empty.");
+            BodyLogger.Block(logs);
             return;
         }
-
-        if (!AudioUtils.IsRecognizedAudioType(primaryClipName, secondaryClipName))
+        
+        AudioUtils.LogClipNames(primaryClipName, secondaryClipName, logs);
+        
+        var isRecognizedBody = AudioUtils.IsBodyAudio(primaryClipName, secondaryClipName, logs);
+        var isRecognizedMedic = AudioUtils.IsMedicalAudio(primaryClipName, secondaryClipName, logs);
+        
+        // 🔒
+        if (!isRecognizedBody && !isRecognizedMedic)
         {
-            logs.Add("❌ Not a recognized sound, no adjustment.");
+            BodyLogger.Block(logs);
+            return;
+        }
+        
+        var primaryVolumeInfo = AudioUtils.GetClipVolumeInfo(primaryClipName);
+        var secondaryVolumeInfo = AudioUtils.GetClipVolumeInfo(secondaryClipName);
+        
+        // 🚀 Early check Performance mode
+        var requiresWeightAdjustment = Plugin.UseWeightBasedVolume.Value && isRecognizedBody;
+
+        if (!requiresWeightAdjustment && !Plugin.UseWeightBasedVolume.Value)
+        {
+            BodyLogger.AddLogSafe(ref logs, "[BetterSource.Play]❌ No volume adjustment required (settings)");
             BodyLogger.Block(logs);
             return;
         }
 
-        ApplyVolumeAdjustment(audioSource, primaryClipName, secondaryClipName, logs);
-    }
-
-    private static void LogClipNames(AudioClip primaryClip, AudioClip secondaryClip)
-    {
-        if (primaryClip != null)
+        if (!AudioUtils.ValidateLocalPlayer(audioSource, logs, out var player))
         {
-            BodyLogger.Info($"[BetterSource.Play] clip name : {primaryClip.name}");
-        }
-
-        if (secondaryClip != null)
-        {
-            BodyLogger.Info($"[BetterSource.Play] clip name : {secondaryClip.name}");
-        }
-    }
-
-    private static bool ValidateLocalPlayer(BetterSource audioSource, List<string> logs)
-    {
-        var player = AudioUtils.GetPlayer(audioSource, logs);
-        var isLocalPlayer = player != null && player == GamePlayerOwner.MyPlayer;
-
-        if (!isLocalPlayer)
-        {
-            logs.Add("❌ not from a local player, no adjustment.");
             BodyLogger.Block(logs);
-            return false;
+            return;
         }
 
-        logs.Add($"🔍 Player detected: {player}");
-        return true;
-    }
-
-    private static void ApplyVolumeAdjustment(BetterSource audioSource, string primaryClipName,
-        string secondaryClipName, List<string> logs)
-    {
-        var vol1 = AudioUtils.GetVolumeFromName(primaryClipName);
-        var vol2 = AudioUtils.GetVolumeFromName(secondaryClipName);
-        var finalVolume = Math.Min(vol1, vol2);
-
-        logs.Add($"🔈 Calculated volume: Primary = {vol1}, Secondary = {vol2}, Final = {finalVolume}");
-
-        audioSource.SetBaseVolume(finalVolume);
-        logs.Add($"✅ Volume applied via SetBaseVolume for Body sound.");
+        if (requiresWeightAdjustment)
+        {
+            AudioUtils.ApplyWeightBasedVolume(
+                audioSource,
+                player,
+                logs,
+                primaryVolumeInfo,
+                secondaryVolumeInfo);
+            BodyLogger.Block(logs);
+            return;
+        } 
+        AudioUtils.ApplyVolumeAdjustment(
+                audioSource,
+                logs,
+                primaryVolumeInfo,
+                secondaryVolumeInfo);
         BodyLogger.Block(logs);
     }
 }
