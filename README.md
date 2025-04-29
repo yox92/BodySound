@@ -15,10 +15,12 @@ The goal is to enhance audio immersion by adjusting the volume for specific soun
   - **Medical sounds**: `_medkit_`, `_bandage_`, `_surgicalkit_`, `_rollupkit_`, `_injector_`, `_zvezda_`, `_splint_`, `_pillsbottle_`.
   - **Interface sounds**: bags, notifications, etc.
   - **In-game actions sounds**: weapon handling, gear switching, etc.
-- 👤 Affects **only the local player** — other entities are untouched.
+- 👤 Affects **only the local player** – other entities are untouched.
 - 🔁 Works via Harmony patches on `SoundBank.Play()` and `SoundBank.PickClipsByDistance()`.
 - 🔊 Sound volume is configurable per category.
-- ⚡ Lightweight — minimal performance impact.
+- ⚡ Lightweight – minimal performance impact.
+- 🆕 Session-Based Sound Management (in-raid vs. out-of-raid).
+- 🆕 Improved control over breathing and injury sounds.
 
 ---
 
@@ -56,6 +58,28 @@ The following weapon-related sounds can also be controlled:
 - 👐 **Weapon handling**: sounds triggered when gripping a weapon (HandGrip).
 - 🔄 **Weapon switching**: sounds activated when switching light scope (`Switcher`).
 - 🔄 **Weapon in/out**: sounds for taking out or putting away a weapon (`weap_in`, `weap_out`).
+
+### 🆕 Physiological Sounds
+
+- 🫁 **Breathing**: Improved control over breathing sound effects.
+- 🩸 **Injuries**: Sounds related to injuries and pain.
+
+---
+
+---
+
+## 🔧 Advanced Configuration
+
+### 🆕 Session-Based Hook Control
+
+You can configure the mod to activate hooks only during raids or everywhere:
+- Enable `EnableAllHooksOnlyInRaid` to restrict sound effects adjustments to raids only.
+- Disable it to apply sound adjustments everywhere (Hideout, menus, raids).
+
+### 🆕 Weight-Based Volume Adjustment
+
+The mod now supports volume adjustment based on the equipment weight:
+- Enable `UseWeightBasedVolume` for a more immersive experience where your gear weight affects the volume of movement sounds.
 
 ---
 
