@@ -34,7 +34,6 @@ namespace BodySound
         
         public static ConfigEntry<bool> EnableAllHooksOnlyInRaid;
         public static ConfigEntry<int> MaxWeight;
-        public static ConfigEntry<bool> UseWeightBasedVolume;
         
         public static ConfigEntry<bool> LootingVolume;
         public static ConfigEntry<bool> BagVolume;
@@ -62,12 +61,6 @@ namespace BodySound
             /*********************
              * Parameters
              *********************/       
-            UseWeightBasedVolume = Config.Bind(
-                "1) Configuration",
-                "Body Audio use PMC EQUIPMENT",
-                true,
-                new ConfigDescription("If any individual action volume (e.g., walk, sprint, jump) is manually set below 100%, it will override and be excluded from the weight-based adjustment system.\"\n ")
-            );
             MaxWeight = Config.Bind(
                 "1) Configuration",
                 "Max Weight",

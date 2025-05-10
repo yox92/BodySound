@@ -91,6 +91,12 @@ public abstract class PatchBodySoundVolume
             return;
         }
         
+        if (!AudioUtils.ValidateLocalPlayer(audioSource, logs, out var player))
+        {
+            BodyLogger.Block(logs);
+            return;
+        }
+        
         AudioUtils.LogClipNames(primaryClipName, secondaryClipName, logs);
         
         var isRecognizedBody = AudioUtils.IsBodyAudio(primaryClipName, secondaryClipName, logs);
@@ -99,30 +105,15 @@ public abstract class PatchBodySoundVolume
         // 🔒
         if (!isRecognizedBody && !isRecognizedMedic)
         {
+            BodyLogger.AddLogSafe(ref logs, "[BetterSource.Play]❌ No volume adjustment required (settings)");
             BodyLogger.Block(logs);
             return;
         }
         
         var primaryVolumeInfo = AudioUtils.GetClipVolumeInfo(primaryClipName);
         var secondaryVolumeInfo = AudioUtils.GetClipVolumeInfo(secondaryClipName);
-        
-        // 🚀 Early check Performance mode
-        var requiresWeightAdjustment = Plugin.UseWeightBasedVolume.Value && isRecognizedBody;
 
-        if (!requiresWeightAdjustment && !Plugin.UseWeightBasedVolume.Value)
-        {
-            BodyLogger.AddLogSafe(ref logs, "[BetterSource.Play]❌ No volume adjustment required (settings)");
-            BodyLogger.Block(logs);
-            return;
-        }
-
-        if (!AudioUtils.ValidateLocalPlayer(audioSource, logs, out var player))
-        {
-            BodyLogger.Block(logs);
-            return;
-        }
-
-        if (requiresWeightAdjustment)
+        if (!isRecognizedMedic)
         {
             AudioUtils.ApplyWeightBasedVolume(
                 audioSource,
@@ -132,7 +123,8 @@ public abstract class PatchBodySoundVolume
                 secondaryVolumeInfo);
             BodyLogger.Block(logs);
             return;
-        } 
+        }
+        
         AudioUtils.ApplyVolumeAdjustment(
                 audioSource,
                 logs,
